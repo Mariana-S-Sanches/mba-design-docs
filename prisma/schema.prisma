@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Char(36)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @db.VarChar(255)
+  name         String   @db.VarChar(150)
+  role         UserRole @default(OPERATOR)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdOrders        Order[]              @relation("OrderCreatedBy")
+  statusHistoryChanges OrderStatusHistory[] @relation("StatusChangedBy")
+
+  @@map("users")
+}
+
+model Customer {
+  id        String   @id @default(uuid()) @db.Char(36)
+  name      String   @db.VarChar(150)
+  email     String   @unique @db.VarChar(255)
+  phone     String   @db.VarChar(32)
+  document  String   @db.VarChar(20)
+  address   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([document])
+  @@map("customers")
+}
+
+model Product {
+  id            String   @id @default(uuid()) @db.Char(36)
+  sku           String   @unique @db.VarChar(64)
+  name          String   @db.VarChar(200)
+  description   String?  @db.Text
+  priceCents    Int
+  stockQuantity Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items OrderItem[]
+
+  @@index([active])
+  @@index([name])
+  @@map("products")
+}
+
+model Order {
+  id             String      @id @default(uuid()) @db.Char(36)
+  orderNumber    String      @unique @db.VarChar(20)
+  customerId     String      @db.Char(36)
+  status         OrderStatus @default(PENDING)
+  subtotalCents  Int
+  discountCents  Int         @default(0)
+  totalCents     Int
+  notes          String?     @db.Text
+  createdById    String      @db.Char(36)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  customer  Customer             @relation(fields: [customerId], references: [id])
+  createdBy User                 @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  items     OrderItem[]
+  history   OrderStatusHistory[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([createdById])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String   @id @default(uuid()) @db.Char(36)
+  orderId        String   @db.Char(36)
+  productId      String   @db.Char(36)
+  quantity       Int
+  unitPriceCents Int
+  totalCents     Int
+  createdAt      DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id           String       @id @default(uuid()) @db.Char(36)
+  orderId      String       @db.Char(36)
+  fromStatus   OrderStatus?
+  toStatus     OrderStatus
+  changedAt    DateTime     @default(now())
+  changedById  String       @db.Char(36)
+  reason       String?      @db.VarChar(500)
+
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedBy User  @relation("StatusChangedBy", fields: [changedById], references: [id])
+
+  @@index([orderId])
+  @@index([changedAt])
+  @@map("order_status_history")
+}
+
+model OrderNumberSequence {
+  id       Int @id @default(1)
+  nextValue Int @default(1)
+
+  @@map("order_number_sequence")
+}
