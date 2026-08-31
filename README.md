@@ -59,17 +59,19 @@ DIRETRIZES:
 
 ## 5. Iterações, Desafios e Ajustes Críticos
 
-Durante a condução da IA, a supervisão humana de engenharia foi fundamental nos seguintes pontos:
+Durante a condução da IA e a revisão técnica pela banca avaliadora, foram consolidados os seguintes ajustes e refinamentos críticos no projeto:
 
 * **Ajuste de Fronteiras entre Documentos:** Foi necessário instruir o agente para manter a separação clara de responsabilidades entre os artefatos. O `RFC.md` manteve o foco em motivadores, trade-offs e decisões arquiteturais de alto nível, evitando a proliferação de schemas JSON exaustivos que pertenciam exclusivamente ao `FDD.md`.
 * **Tratamento Rigoroso de Ideias Descartadas:** Ideias levantadas na reunião técnica e descartadas (como uso de Redis Streams, disparo HTTP síncrono no checkout e disparo de e-mails em caso de falha) foram explicitamente posicionadas nas seções *Fora de Escopo* e *Alternativas Descartadas* dos documentos, impedindo que fossem incorporadas erroneamente como requisitos no `PRD.md` ou `FDD.md`.
 * **Precisão de Caminhos de Código Legado:** Garantia de que todos os arquivos citados apontassem para caminhos reais existentes no repositório (`src/modules/orders/order.service.ts`, `prisma/schema.prisma`, `src/shared/errors/app-error.ts`, `src/middlewares/auth.middleware.ts`, `src/app.ts`).
+* **Especificação de Distributed Tracing (OpenTelemetry):** Iteração dedicada no `FDD.md` para documentar a estratégia de rastreabilidade ponta a ponta com OpenTelemetry (`@opentelemetry/sdk-node` e `@opentelemetry/api`). Foi modelado a captura do contexto W3C (`traceparent`) na requisição de checkout/alteração de status, a persistência do contexto dentro do snapshot da outbox, a extração pelo Polling Worker em `src/worker.ts`, a criação de spans-filhos (`webhook.dispatch`) e a injeção do cabeçalho `traceparent` no disparo HTTP de saída para os clientes B2B.
+* **Inclusão de Seções formais de Dependências e Riscos Técnicos:** Complementação do FDD com o mapeamento exaustivo de dependências de runtime (Node.js LTS >= 18.x, TypeScript 5.x, Prisma 5.x, MySQL 8, OpenTelemetry, Pino, Zod) e mitigações estratégicas para riscos como contenção de locks na outbox via `FOR UPDATE SKIP LOCKED`, isolamento de pools de conexão MySQL entre Worker e API, tratativa de entrega fora de ordem via timestamp no snapshot e controle de vazamentos de memória (memory leaks) no loop do worker.
 
 ---
 
 ## 6. Como Navegar a Entrega
 
-### Estrutura de DIretórios
+### Estrutura de Diretórios
 
 ```text
 .
